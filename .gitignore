@@ -1,0 +1,10 @@
+*venv*
+*build*
+.git
+*kate*
+*swap*
+*swp*
+*.mp4
+*fps*
+*caption*
+*.idea*
