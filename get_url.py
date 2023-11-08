@@ -41,7 +41,7 @@ def get_urls_of_youtube_request(list_of_search_requests = search_requests, filte
     return result
 
 
-def get_urls_of_youtube_channel(channel_id = "wendoverproductions"):
+def get_urls_of_youtube_channel(channel_id = "wendoverproductions", show_title=False):
     links = []
 
     options = webdriver.ChromeOptions()
@@ -84,18 +84,23 @@ def get_urls_of_youtube_channel(channel_id = "wendoverproductions"):
             #                        './/*[@id="metadata"]//span[@class="inline-metadata-item style-scope ytd-video-meta-block"][1]').text
             # date_time = e.find_element(By.XPATH,
             #                            './/*[@id="metadata"]//span[@class="inline-metadata-item style-scope ytd-video-meta-block"][2]').text
-            data.append({
-                title: vurl,
-                # 'title': title,
-                # 'date_time': date_time,
-                # 'views': views
-            })
+            if show_title:
+                data.append({
+                    title: vurl,
+                    # 'title': title,
+                    # 'date_time': date_time,
+                    # 'views': views
+                })
+            else:
+                data.append(vurl)
     except:
         pass
 
-    item = data
-    print(item)
-    print(len(item))
+    links = data
+    # old
+    # item = data
+    # print(item)
+    # print(len(item))
     # df = pd.DataFrame(item)
     # print(df)
     return links

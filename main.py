@@ -3,7 +3,8 @@ import os
 
 
 def test_parse_video():
-    pv.download_video_by_url("https://youtu.be/56zKeunsNvA")
+    # pv.download_video_by_url("https://youtu.be/56zKeunsNvA")
+    pv.download_video_by_url("https://www.youtube.com/watch?v=G6XYsNA_yU8")
 
     try:
         with open("captions.txt", "w") as file:

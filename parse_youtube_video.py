@@ -79,6 +79,26 @@ def get_images_from_video(video, folder=None, delay=30, name="file", max_images=
         count += delay * fps
         vidcap.set(1, count)
 
+
+def extract_images_from_word(text="", delete_video=False, image_delay=30,
+                             num_urls=10, max_images=20, name="extraction_images", max_duration=15, silent=False, do_download=True):
+
+    if not os.path.exists(name):
+        os.mkdir(name)
+
+    # urls = get_urls(text, num_urls)
+    urls = get_url.get_urls_of_youtube_channel(text)
+
+    if do_download:
+        for url in urls:
+            download_video_by_url(url, max_duration=max_duration)
+
+    for i, video in enumerate(glob.glob("*.mp4")):
+        get_images_from_video(video, folder=name, delay=image_delay, name=name, max_images=max_images, silent=silent)
+        if delete_video:
+            os.remove(video)
+
 # print(get_subtitle("TrKMA7SYXfg", 'ru'))
 # test one creenshot by one fps
-
+# print(get_url.get_urls_of_youtube_channel("@uahuy"))
+extract_images_from_word("@uahuy", do_download=False)
