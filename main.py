@@ -2,9 +2,6 @@ import parse_youtube_video as pv
 import os
 
 
-def get_youtube_id_by_url(string: str):
-    return string.split("?t=", 1)[0][-11:]
-
 def test_parse_video():
     # pv.download_video_by_url("https://youtu.be/56zKeunsNvA")
     pv.download_video_by_url("https://www.youtube.com/watch?v=G6XYsNA_yU8")
@@ -22,6 +19,12 @@ def test_parse_video():
                           delay=1 / 30)
 
 
+def test_get_image_with_subtitle_by_url(url):
+    pv.get_image_from_url(url, folder=os.path.join(os.getcwd(), "fps_test"),
+                          name="fps", max_images=10, delay=10, file_name_subtitle=True, subtitle_lang='uk')
+
+
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    test_parse_video()
+    test_get_image_with_subtitle_by_url("https://youtu.be/pJJI7cP8aNo")
+    # test_parse_video()

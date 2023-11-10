@@ -13,15 +13,31 @@ def get_subtitle(video_id, lang="en"):
 
 
 # TODO add get subtitles in time
-def get_subtitle_in_time(subtitle: str, time: int):
-    pass
+def get_subtitle_in_time(subtitle: list, time: int):
+    if len(subtitle) <= 0:
+        return None
+
+    result = ""
+
+    for it in range(len(subtitle)):
+        if subtitle[it].get('start') < time and subtitle[it].get('start') + subtitle[it].get('duration') > time:
+            result = subtitle[it].get('text')
+            break
+
+    return result
 
 
 def get_desctiption():
     pass
 
 
+def get_youtube_id_by_url(string: str):
+    return string.split("?t=", 0)[0][-11:]
+
+
 def download_video_by_url(url, path=None, max_duration=10):
+    file_name = "undefine_file"
+
     try:
         yt = YouTube(url)
         duration = yt.length
@@ -34,6 +50,8 @@ def download_video_by_url(url, path=None, max_duration=10):
             print(f"Video {url} too long")
     except Exception as exc:
         print(f"Download of {url} did not work because of {exc}...")
+
+    return file_name
 
 
 def max_label(name, folder):
@@ -50,7 +68,7 @@ def max_label(name, folder):
     return biggest_label
 
 
-def get_images_from_video(video, folder=None, delay=30, name="file", max_images=20, silent=False):
+def get_images_from_video(video, folder=None, delay=30, name="file", max_images=20, silent=False, captions=None):
     vidcap = cv2.VideoCapture(video)
     count = 0
     num_images = 0
@@ -69,7 +87,7 @@ def get_images_from_video(video, folder=None, delay=30, name="file", max_images=
         success, image = vidcap.read()
         num_images += 1
         label += 1
-        file_name = name + "_" + str(label) + ".jpg"
+        file_name = str(label) + "_|" + (name if captions is None else get_subtitle_in_time(captions, delay * num_images - delay)) + "|" + ".jpg"
         path = os.path.join(folder, file_name)
 
         try:
@@ -84,6 +102,22 @@ def get_images_from_video(video, folder=None, delay=30, name="file", max_images=
 
         count += delay * fps
         vidcap.set(1, count)
+
+
+def get_image_from_url(url, folder=None, delay=30, name="file", max_images=20,
+                       file_name_subtitle=False, subtitle_lang="en", silent=False):
+    captions = None
+
+    if file_name_subtitle:
+        captions = get_subtitle(get_youtube_id_by_url(url), subtitle_lang)
+
+    get_images_from_video(download_video_by_url(url),
+                          folder=folder,
+                          delay=delay,
+                          name=name,
+                          max_images=max_images,
+                          silent=silent,
+                          captions=captions)
 
 
 def extract_images_from_word(text="", delete_video=False, image_delay=30,
@@ -104,7 +138,33 @@ def extract_images_from_word(text="", delete_video=False, image_delay=30,
         if delete_video:
             os.remove(video)
 
-# print(get_subtitle("TrKMA7SYXfg", 'ru'))
+    pass
+
+
+# TODO implement this function of analyse video to csv string
+def get_analyse_video(url: str):
+    pass
+
+# TODO implement this function of get dataset
+def get_dataset_by_request(request: str, count: int, file_nam="dataset.csv"):
+    urls = []
+    # gets x urls
+
+    # implements this for
+    for url in urls:
+        # write to end file dataset.csv
+        pass
+
+    pass
+
+
+# st = get_subtitle("TrKMA7SYXfg", 'ru')
+# print(st)
+# print(st[0].get('start'))
+# print(st[0])
+# print(type(st[1]))
+# print(st[0:3])
+# print(type(st))
 # test one creenshot by one fps
 # print(get_url.get_urls_of_youtube_channel("@uahuy"))
 # extract_images_from_word("@uahuy", do_download=False)
