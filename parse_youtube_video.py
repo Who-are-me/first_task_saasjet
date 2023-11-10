@@ -7,8 +7,14 @@ import cv2
 import os
 import glob
 
+
 def get_subtitle(video_id, lang="en"):
     return YouTubeTranscriptApi.get_transcript(video_id, languages=[lang])
+
+
+# TODO add get subtitles in time
+def get_subtitle_in_time(subtitle: str, time: int):
+    pass
 
 
 def get_desctiption():
@@ -101,4 +107,4 @@ def extract_images_from_word(text="", delete_video=False, image_delay=30,
 # print(get_subtitle("TrKMA7SYXfg", 'ru'))
 # test one creenshot by one fps
 # print(get_url.get_urls_of_youtube_channel("@uahuy"))
-extract_images_from_word("@uahuy", do_download=False)
+# extract_images_from_word("@uahuy", do_download=False)

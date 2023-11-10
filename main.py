@@ -2,6 +2,9 @@ import parse_youtube_video as pv
 import os
 
 
+def get_youtube_id_by_url(string: str):
+    return string.split("?t=", 1)[0][-11:]
+
 def test_parse_video():
     # pv.download_video_by_url("https://youtu.be/56zKeunsNvA")
     pv.download_video_by_url("https://www.youtube.com/watch?v=G6XYsNA_yU8")

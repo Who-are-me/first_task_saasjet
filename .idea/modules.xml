@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/first_task_sasjet.iml" filepath="$PROJECT_DIR$/.idea/first_task_sasjet.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/first_task_saasjet.iml" filepath="$PROJECT_DIR$/.idea/first_task_saasjet.iml" />
     </modules>
   </component>
 </project>

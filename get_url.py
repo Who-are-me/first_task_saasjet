@@ -2,7 +2,6 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 import time
-import pandas as pd
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -97,12 +96,6 @@ def get_urls_of_youtube_channel(channel_id = "wendoverproductions", show_title=F
         pass
 
     links = data
-    # old
-    # item = data
-    # print(item)
-    # print(len(item))
-    # df = pd.DataFrame(item)
-    # print(df)
     return links
 
 # print(get_urls_of_youtube_request())
