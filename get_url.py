@@ -99,6 +99,6 @@ def get_urls_of_youtube_channel(channel_id = "wendoverproductions", show_title=F
     return links
 
 # print(get_urls_of_youtube_request())
-# print(get_urls_of_youtube_channel("@Chekalkyn"))
+print(get_urls_of_youtube_channel("@Chekalkyn"))
 
 
