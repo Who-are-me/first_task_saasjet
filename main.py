@@ -1,5 +1,7 @@
+import get_url
 import parse_youtube_video as pv
 import os
+import re
 
 
 def test_parse_video():
@@ -19,12 +21,17 @@ def test_parse_video():
                           delay=1 / 30)
 
 
-def test_get_image_with_subtitle_by_url(url):
-    pv.get_image_from_url(url, folder=os.path.join(os.getcwd(), "fps_test"),
-                          name="fps", max_images=10, delay=10, file_name_subtitle=True, subtitle_lang='uk')
+def test_get_image_with_subtitle_by_url(url, caption_lang='en', silent=False):
+    pv.get_images_from_url(url, folder=os.path.join(os.getcwd(), "fps_test"),
+                           name="fps", max_images=1000, delay=1,
+                           file_name_subtitle=True, subtitle_lang=caption_lang, silent=silent)
 
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    test_get_image_with_subtitle_by_url("https://youtu.be/pJJI7cP8aNo")
+    # test_get_image_with_subtitle_by_url("https://youtu.be/pJJI7cP8aNo")
+    # test_get_image_with_subtitle_by_url("https://youtu.be/8aR77s9RLck", caption_lang='en', silent=True)
     # test_parse_video()
+    pv.get_dataset_by_request(request='cats', count=3, delay=1)
+    # print(f"---> {len(get_url.get_urls_of_youtube_request(['cats'], count=77, debug=True))}")
+    pass

@@ -1,14 +1,18 @@
 import get_url
 from youtube_transcript_api import YouTubeTranscriptApi
-import urllib
-from bs4 import BeautifulSoup
+# import urllib
+# from bs4 import BeautifulSoup
 from pytube import YouTube
 import cv2
 import os
 import glob
+import pandas as pd
 
 
-def get_subtitle(video_id, lang="en"):
+def get_subtitle(video_id, lang="en", debug=False):
+    if debug:
+        print(f"Download subtitle in video_id {video_id}")
+
     return YouTubeTranscriptApi.get_transcript(video_id, languages=[lang])
 
 
@@ -27,16 +31,18 @@ def get_subtitle_in_time(subtitle: list, time: int):
     return result
 
 
-def get_desctiption():
-    pass
+# TODO implement me! get desctiptions
+def get_description(url: str):
+    return "Template description"
 
 
+# FIXME dont work correct -> https://www.youtube.com/watch?v=DBzGJ1V5L34&pp=ygUEY2F0cw%3D%3
 def get_youtube_id_by_url(string: str):
     return string.split("?t=", 0)[0][-11:]
 
 
 def download_video_by_url(url, path=None, max_duration=10):
-    file_name = "undefine_file"
+    file_name = "undefined_file"
 
     try:
         yt = YouTube(url)
@@ -73,6 +79,9 @@ def get_images_from_video(video, folder=None, delay=30, name="file", max_images=
     count = 0
     num_images = 0
 
+    if not silent:
+        print(f"Video {video}")
+
     if not folder:
         folder = os.getcwd()
 
@@ -103,21 +112,34 @@ def get_images_from_video(video, folder=None, delay=30, name="file", max_images=
         count += delay * fps
         vidcap.set(1, count)
 
+    return vidcap.getBackendName()
 
-def get_image_from_url(url, folder=None, delay=30, name="file", max_images=20,
-                       file_name_subtitle=False, subtitle_lang="en", silent=False):
+
+def get_images_from_url(url, folder=None, delay=30, name="file", max_images=20,
+                        file_name_subtitle=False, subtitle_lang="en", silent=False):
     captions = None
+
+    if not silent:
+        print(f"Url {url}")
 
     if file_name_subtitle:
         captions = get_subtitle(get_youtube_id_by_url(url), subtitle_lang)
 
-    get_images_from_video(download_video_by_url(url),
+    if not silent:
+        print(f"Start of get image from video")
+    file_name = download_video_by_url(url)
+    get_images_from_video(file_name,
                           folder=folder,
                           delay=delay,
                           name=name,
                           max_images=max_images,
                           silent=silent,
                           captions=captions)
+
+    if not silent:
+        print(f"End of get image from url {url}")
+
+    return file_name
 
 
 def extract_images_from_word(text="", delete_video=False, image_delay=30,
@@ -142,23 +164,44 @@ def extract_images_from_word(text="", delete_video=False, image_delay=30,
 
 
 # TODO implement this function of analyse video to csv string
-def get_analyse_video(url: str):
-    pass
+# TODO skip age restricted
+def get_analyse_video(url: str, folder=None, max_images=100, delay=1):
+    result = ','
+    file_name = get_images_from_url(url=url, max_images=max_images, folder=folder)
+    youtube_id = get_youtube_id_by_url(url)
+    # FIXME delete file extended
+    title = file_name[::-1].split('/', 1)[0][::-1]
+    description = get_description(url)
+
+    return result.join([file_name, youtube_id, url, title, description]) + "\n"
+
 
 # TODO implement this function of get dataset
-def get_dataset_by_request(request: str, count: int, file_nam="dataset.csv"):
-    urls = []
-    # gets x urls
+def get_dataset_by_request(request: str, count: int = 10, file_name="dataset.csv", folder=None, max_images=100, delay=1):
+    urls = get_url.get_urls_of_youtube_request([request], count=count)
+    file = None
+    csv_structure = ",file_name,yid,url,title,description\n"
 
-    # implements this for
-    for url in urls:
-        # write to end file dataset.csv
-        pass
+    # open or create file
+    try:
+        if not os.path.exists(os.path.join(os.getcwd(), file_name)):
+            file = open(file_name, 'a+')
+            file.write(csv_structure)
+        else:
+            file = open(file_name, 'a+')
+    except Exception as e:
+        print(f"Error {e}")
+    finally:
+        for url in urls:
+            file.write(get_analyse_video(url=url, folder=folder, max_images=max_images, delay=delay))
 
-    pass
+    return True
 
 
-# st = get_subtitle("TrKMA7SYXfg", 'ru')
+############################
+# some code for testing file
+############################
+# st = get_subtitle("TrKMA7SYXfg", 'ru', debug=False)
 # print(st)
 # print(st[0].get('start'))
 # print(st[0])
@@ -168,3 +211,4 @@ def get_dataset_by_request(request: str, count: int, file_nam="dataset.csv"):
 # test one creenshot by one fps
 # print(get_url.get_urls_of_youtube_channel("@uahuy"))
 # extract_images_from_word("@uahuy", do_download=False)
+# print(YouTubeTranscriptApi.get_transcript("TrKMA7SYXfg", languages=['ru']))
