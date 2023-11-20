@@ -1,20 +1,25 @@
+import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
-import time
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 
+# support global values
 driver = webdriver.Chrome()
 driver.implicitly_wait(5)
-
-test_url_search_requests = ['Never Gonna Give You Up',
-                   'rick astley', 'chainsaw man', 'russian war ship']
+test_url_search_requests = [
+    'Never Gonna Give You Up',
+    'rick astley',
+    'chainsaw man',
+    'russian war ship'
+]
 test_url_youtube_search_div = 'div#contents ytd-item-section-renderer>div#contents a#thumbnail'
 
 
 # TODO filter shorts on/off
+'''WARNING one request -> list, multi request -> map'''
 def get_urls_of_youtube_request(list_of_search_requests = test_url_search_requests,
                                 filter_pattern = test_url_youtube_search_div,
                                 count: int = 10, debug=False):
@@ -25,7 +30,6 @@ def get_urls_of_youtube_request(list_of_search_requests = test_url_search_reques
             print("----DEBUG----")
 
         links = []
-        link_webelements = []
         driver.get(f'https://www.youtube.com/results?search_query={request}')
         link_webelements = driver.find_elements(By.CSS_SELECTOR, filter_pattern)
 
@@ -99,6 +103,7 @@ def get_urls_of_youtube_channel(channel_id = "wendoverproductions", show_title=F
     data = []
 
     try:
+        # TODO clean me pls
         for e in WebDriverWait(driver, 20).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'div#details'))):
             title = e.find_element(By.CSS_SELECTOR, 'a#video-title-link').get_attribute('title')
             vurl = e.find_element(By.CSS_SELECTOR, 'a#video-title-link').get_attribute('href')
@@ -119,6 +124,10 @@ def get_urls_of_youtube_channel(channel_id = "wendoverproductions", show_title=F
         print(f"Error with {e}")
 
     return data
+
+############################
+# some code for testing file
+############################
 
 # print(get_urls_of_youtube_request(["cats"]))
 # print(get_urls_of_youtube_channel("@AlekOS"))
