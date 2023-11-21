@@ -3,6 +3,7 @@ import cv2
 import os
 import glob
 import time
+import json
 
 
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -10,25 +11,31 @@ from pytube import YouTube
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 
 
 # support global values
-csv_structure = ",file_name,folder_with_images,yid,url,title,description,caption\n"
+csv_structure = (",path_to_video,path_to_folder_with_images,"
+                 "youtube_video_id,url,title,description,path_to_caption,caption_in_frame\n")
 
 
 # FIXME check if exist subtitle and lang
 def get_subtitle(video_id, lang="en", debug=False):
     if debug:
-        print(f"Download subtitle in video_id {video_id}")
+        print(f"DEBUG: Download subtitle in video_id {video_id}")
 
-    # if len(YouTubeTranscriptApi.list_transcripts(video_id)) == 0:
-    #     return "This video dont have caption"
+    try:
+        transcripts = YouTubeTranscriptApi.list_transcripts(video_id)
+        o_transcript = transcripts.find_transcript(language_codes=[lang, 'en'])
 
-    return "test caption"
-    # return YouTubeTranscriptApi.get_transcript(video_id, languages=[lang])
+        if o_transcript.language_code == lang:
+            return YouTubeTranscriptApi.get_transcript(video_id, [lang])
+        else:
+            return ""
+    except Exception as e:
+        print(f"ERROR IN get_subtitle(), exception {e}\n OR video dont have '{lang}' language!")
+
+    return ""
 
 
 def delete_file_extension(file):
@@ -121,11 +128,12 @@ def max_label(folder):
     return biggest_label
 
 
-def get_images_from_video(video, folder_of_images=None, folder=None,
-                          delay=30, name="file", max_images=20, silent=False, captions=None):
-    vidcap = cv2.VideoCapture(video)
+def get_images_from_video(video, folder_of_images=None, folder=None, delay=30,
+                          name="file", max_images=20, silent=False, captions=None):
+    screenshot = cv2.VideoCapture(video)
     count = 0
     num_images = 0
+    caption_in_frame = dict()
 
     if not silent:
         print(f"Video {video}")
@@ -138,19 +146,14 @@ def get_images_from_video(video, folder_of_images=None, folder=None,
 
     label = max_label(folder_of_images)
     success = True
-    fps = int(vidcap.get(cv2.CAP_PROP_FPS))
+    fps = int(screenshot.get(cv2.CAP_PROP_FPS))
 
     while success and num_images < max_images:
-        success, image = vidcap.read()
+        success, image = screenshot.read()
         num_images += 1
         label += 1
-
-        if captions is not None:
-            file_name = (str(label) + "_|" +
-                         (name if captions is None else get_subtitle_in_time(captions, delay * num_images - delay)) +
-                         "|" + ".jpg")
-        else:
-            file_name = str(label) + '_' + name + ".jpg"
+        file_name = str(label) + '_' + name + ".jpg"
+        caption_in_frame[file_name] = get_subtitle_in_time(captions, delay * num_images - delay)
 
         if folder_of_images is not None:
             path = os.path.join(os.path.join(folder, folder_of_images), file_name)
@@ -168,13 +171,13 @@ def get_images_from_video(video, folder_of_images=None, folder=None,
             print(f"Image is NOT written at {path}, or Exception {e}")
 
         count += delay * fps
-        vidcap.set(1, count)
+        screenshot.set(1, count)
 
-    return vidcap.getBackendName()
+    return screenshot.getBackendName(), caption_in_frame
 
 
-def get_images_from_url(url, folder=None, delay=30, name="file", max_images=20,
-                        file_name_subtitle=False, subtitle_lang="en", silent=False):
+def get_images_from_url(url, folder=None, delay=1, name="file", max_images=20,
+                        caption_language="en", silent=False):
     captions = None
 
     if url is None:
@@ -183,33 +186,28 @@ def get_images_from_url(url, folder=None, delay=30, name="file", max_images=20,
 
     if not silent:
         print(f"Url {url}")
-
-    if file_name_subtitle:
-        captions = get_subtitle(get_youtube_id_by_url(url), subtitle_lang)
-
-    if not silent:
         print(f"Start of get image from video")
 
-    path_file = download_video_by_url(url, path=folder)
-    folder_of_images = os.path.join(
+    path_to_video = download_video_by_url(url, path=folder)
+    path_to_folder_with_images = os.path.join(
         folder,
         # gets title of video
-        "IMAGES_" + delete_file_extension(path_file[::-1].split('/', 1)[0][::-1])
+        "IMAGES_" + delete_file_extension(path_to_video[::-1].split('/', 1)[0][::-1])
     )
 
-    get_images_from_video(path_file,
-                          folder_of_images=folder_of_images,
+    dont_used, caption_in_frame = get_images_from_video(path_to_video,
+                          folder_of_images=path_to_folder_with_images,
                           folder=folder,
                           delay=delay,
                           name=name,
                           max_images=max_images,
                           silent=silent,
-                          captions=captions)
+                          captions=get_subtitle(get_youtube_id_by_url(url), lang=caption_language))
 
     if not silent:
         print(f"End of get image from url {url}")
 
-    return path_file, folder_of_images
+    return path_to_video, path_to_folder_with_images, caption_in_frame
 
 
 
@@ -222,34 +220,34 @@ def get_analyse_video(url: str, folder=None,
         return None
 
     result = ','
-    path_file, folder_of_images = get_images_from_url(
+    path_to_video, path_to_folder_with_image, caption_in_frame = get_images_from_url(
         url=url,
         name=name_of_images,
         max_images=max_images,
         folder=folder,
         delay=delay,
         silent=False)
-    folder_with_images = folder_of_images
-    youtube_id = get_youtube_id_by_url(url)
-    title = delete_file_extension(path_file[::-1].split('/', 1)[0][::-1])
+    youtube_video_id = get_youtube_id_by_url(url)
+    title = delete_file_extension(path_to_video[::-1].split('/', 1)[0][::-1])
     description = get_description(url)
-    caption = get_subtitle(get_youtube_id_by_url(url))
 
     # TODO save caption as file ?
     path_to_caption = os.path.join(folder, "CAPTION_" + title + ".txt")
 
     with open(path_to_caption, 'w') as file:
-        file.write(caption)
+        #          list to str separate of ' '
+        file.write(' '.join(str(line) for line in get_subtitle(get_youtube_id_by_url(url))))
         file.close()
 
     return result.join([
-        path_file,
-        folder_with_images,
-        youtube_id,
+        path_to_video,
+        path_to_folder_with_image,
+        youtube_video_id,
         url,
         title,
         description,
-        path_to_caption
+        path_to_caption,
+        json.dumps(caption_in_frame)
     ]) + "\n"
 
 
@@ -296,7 +294,7 @@ def get_dataset_by_request(requests: list, count: int = 10,
 # some code for testing file
 ############################
 
-# st = get_subtitle("TrKMA7SYXfg", 'ru', debug=False)
+# st = get_subtitle("TrKMA7SYXfg", 'en', debug=True)
 # print(st)
 # print(st[0].get('start'))
 # print(st[0])

@@ -14,7 +14,7 @@ if __name__ == '__main__':
     # # test_parse_video()
     print(
         pv.get_dataset_by_request(
-            requests=['computer science'],
+            requests=['computer visions'],
             count=3,
             delay=1 / 30,
             max_images=100,
