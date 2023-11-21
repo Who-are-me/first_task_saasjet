@@ -173,7 +173,7 @@ def get_images_from_video(video, folder_of_images=None, folder=None,
     return vidcap.getBackendName()
 
 
-def get_images_from_url(url, folder_of_images=None, folder=None, delay=30, name="file", max_images=20,
+def get_images_from_url(url, folder=None, delay=30, name="file", max_images=20,
                         file_name_subtitle=False, subtitle_lang="en", silent=False):
     captions = None
 
@@ -189,8 +189,15 @@ def get_images_from_url(url, folder_of_images=None, folder=None, delay=30, name=
 
     if not silent:
         print(f"Start of get image from video")
-    file_name = download_video_by_url(url, path=folder)
-    get_images_from_video(file_name,
+
+    path_file = download_video_by_url(url, path=folder)
+    folder_of_images = os.path.join(
+        folder,
+        # gets title of video
+        "IMAGES_" + delete_file_extension(path_file[::-1].split('/', 1)[0][::-1])
+    )
+
+    get_images_from_video(path_file,
                           folder_of_images=folder_of_images,
                           folder=folder,
                           delay=delay,
@@ -202,22 +209,21 @@ def get_images_from_url(url, folder_of_images=None, folder=None, delay=30, name=
     if not silent:
         print(f"End of get image from url {url}")
 
-    return file_name
+    return path_file, folder_of_images
 
 
 
 # TODO implement this function of analyse video to csv string
 # TODO skip age restricted
 # FIXME check is None
-def get_analyse_video(url: str, folder_of_images=None, folder=None,
+def get_analyse_video(url: str, folder=None,
                       name_of_images='file', max_images:int = 100, delay: int = 1):
     if url is None:
         return None
 
     result = ','
-    path_file = get_images_from_url(
+    path_file, folder_of_images = get_images_from_url(
         url=url,
-        folder_of_images=folder_of_images,
         name=name_of_images,
         max_images=max_images,
         folder=folder,
@@ -271,14 +277,13 @@ def get_dataset_by_request(requests: list, count: int = 10,
             print(f"Catch exception {e}")
         finally:
             for url in urls:
-                analyse_result = get_analyse_video(
-                    url=url,
-                    folder_of_images=os.path.join(os.getcwd(), folder, 'IMAGES_' + request),
-                    folder=os.path.join(os.getcwd(), folder),
-                    max_images=max_images,
-                    delay=delay)
-
-                if analyse_result is not None:
+                print("URL -> " + str(url))
+                if url is not None:
+                    analyse_result = get_analyse_video(
+                        url=url,
+                        folder=os.path.join(os.getcwd(), folder),
+                        max_images=max_images,
+                        delay=delay)
                     file.write(analyse_result)
                 else:
                     print("Warning: skip, because is url None!")
@@ -303,5 +308,5 @@ def get_dataset_by_request(requests: list, count: int = 10,
 # extract_images_from_word("@uahuy", do_download=False)
 # print(YouTubeTranscriptApi.get_transcript("TrKMA7SYXfg", languages=['ru']))
 # print(get_youtube_title_by_url("https://www.youtube.com/watch?v=DORZA_S7f9w"))
-print(get_youtube_title_by_url("https://youtu.be/b6wAYwOKgRY"))
+# print(get_youtube_title_by_url("https://youtu.be/b6wAYwOKgRY"))
 # print(get_youtube_title_by_url("https://youtu.be/DORZA_S7f9w"))
