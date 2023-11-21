@@ -18,6 +18,7 @@ test_url_search_requests = [
 test_url_youtube_search_div = 'div#contents ytd-item-section-renderer>div#contents a#thumbnail'
 
 
+# TODO skip None urls
 # TODO filter shorts on/off
 '''WARNING one request -> list, multi request -> map'''
 def get_urls_of_youtube_request(list_of_search_requests = test_url_search_requests,

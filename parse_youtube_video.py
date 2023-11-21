@@ -1,9 +1,18 @@
 import get_url
-from youtube_transcript_api import YouTubeTranscriptApi
-from pytube import YouTube
 import cv2
 import os
 import glob
+import time
+
+
+from youtube_transcript_api import YouTubeTranscriptApi
+from pytube import YouTube
+
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
 
 
 # support global values
@@ -24,6 +33,30 @@ def get_subtitle(video_id, lang="en", debug=False):
 
 def delete_file_extension(file):
     return file.split('.', 1)[0]
+
+
+# FIXME dont work
+def get_youtube_title_by_url(url: str):
+    if url is None:
+        return None
+
+    driver = webdriver.Chrome()
+    driver.get("https://www.youtube.com/")
+
+    time.sleep(2)
+
+    search_box = driver.find_element("name", "search_query")
+    # search_box.send_keys(url + Keys.RETURN)
+    search_box.send_keys(url)
+    search_box.send_keys(Keys.RETURN)
+
+    time.sleep(2)
+
+    video_link = driver.find_element(By.CSS_SELECTOR, "#video-title")
+
+    title = video_link.get_attribute("title")
+
+    return title
 
 
 def get_subtitle_in_time(subtitle: list, time: int):
@@ -74,18 +107,22 @@ def download_video_by_url(url, path=None, max_duration=10):
     return file_name
 
 
-def max_label(name, folder):
-    path_pattern = os.path.join(folder, name + "_*.jpg")
+def max_label(folder):
+    path_pattern = os.path.join(folder, "*.jpg")
     existing_files = glob.glob(path_pattern)
-    if not existing_files:
-        biggest_label = 0
-    else:
-        existing_labels = map(lambda s: int(s.split('_')[-1].split('.')[0]), existing_files)
-        biggest_label = max(existing_labels)
+    biggest_label = 0
+
+    while True:
+        if os.path.exists(os.path.join(folder, str(biggest_label + 1) + "_file.jpg")):
+            biggest_label += 1
+        else:
+            break
+
     return biggest_label
 
 
-def get_images_from_video(video, folder_of_images=None, folder=None, delay=30, name="file", max_images=20, silent=False, captions=None):
+def get_images_from_video(video, folder_of_images=None, folder=None,
+                          delay=30, name="file", max_images=20, silent=False, captions=None):
     vidcap = cv2.VideoCapture(video)
     count = 0
     num_images = 0
@@ -99,7 +136,7 @@ def get_images_from_video(video, folder_of_images=None, folder=None, delay=30, n
     if folder_of_images is not None and not os.path.exists(os.path.join(folder, folder_of_images)):
         os.makedirs(os.path.join(folder, folder_of_images))
 
-    label = max_label(name, folder)
+    label = max_label(folder_of_images)
     success = True
     fps = int(vidcap.get(cv2.CAP_PROP_FPS))
 
@@ -109,7 +146,9 @@ def get_images_from_video(video, folder_of_images=None, folder=None, delay=30, n
         label += 1
 
         if captions is not None:
-            file_name = str(label) + "_|" + (name if captions is None else get_subtitle_in_time(captions, delay * num_images - delay)) + "|" + ".jpg"
+            file_name = (str(label) + "_|" +
+                         (name if captions is None else get_subtitle_in_time(captions, delay * num_images - delay)) +
+                         "|" + ".jpg")
         else:
             file_name = str(label) + '_' + name + ".jpg"
 
@@ -176,7 +215,7 @@ def get_analyse_video(url: str, folder_of_images=None, folder=None,
         return None
 
     result = ','
-    file_name = get_images_from_url(
+    path_file = get_images_from_url(
         url=url,
         folder_of_images=folder_of_images,
         name=name_of_images,
@@ -186,29 +225,30 @@ def get_analyse_video(url: str, folder_of_images=None, folder=None,
         silent=False)
     folder_with_images = folder_of_images
     youtube_id = get_youtube_id_by_url(url)
-    title = delete_file_extension(file_name[::-1].split('/', 1)[0][::-1])
+    title = delete_file_extension(path_file[::-1].split('/', 1)[0][::-1])
     description = get_description(url)
     caption = get_subtitle(get_youtube_id_by_url(url))
 
     # TODO save caption as file ?
-    # path_to_caption = os.path.join(folder, "CAPTION_" + title + ".txt")
+    path_to_caption = os.path.join(folder, "CAPTION_" + title + ".txt")
 
-    # with open(path_to_caption, 'w') as file:
-    #     file.write(caption)
-    #     file.close()
+    with open(path_to_caption, 'w') as file:
+        file.write(caption)
+        file.close()
 
     return result.join([
-        file_name,
+        path_file,
         folder_with_images,
         youtube_id,
         url,
         title,
         description,
-        caption
+        path_to_caption
     ]) + "\n"
 
 
-def get_dataset_by_request(requests: list, count: int = 10, name_of_dataset="dataset.csv", folder=None, max_images=100, delay=1):
+def get_dataset_by_request(requests: list, count: int = 10,
+                           name_of_dataset="DATASET.csv", folder=None, max_images=100, delay=1):
     prefix_to_path = "DATASET_"
 
     for request in requests:
@@ -233,7 +273,7 @@ def get_dataset_by_request(requests: list, count: int = 10, name_of_dataset="dat
             for url in urls:
                 analyse_result = get_analyse_video(
                     url=url,
-                    folder_of_images=os.path.join(os.getcwd(), folder, request + '_images'),
+                    folder_of_images=os.path.join(os.getcwd(), folder, 'IMAGES_' + request),
                     folder=os.path.join(os.getcwd(), folder),
                     max_images=max_images,
                     delay=delay)
@@ -262,3 +302,6 @@ def get_dataset_by_request(requests: list, count: int = 10, name_of_dataset="dat
 # print(get_url.get_urls_of_youtube_channel("@uahuy"))
 # extract_images_from_word("@uahuy", do_download=False)
 # print(YouTubeTranscriptApi.get_transcript("TrKMA7SYXfg", languages=['ru']))
+# print(get_youtube_title_by_url("https://www.youtube.com/watch?v=DORZA_S7f9w"))
+print(get_youtube_title_by_url("https://youtu.be/b6wAYwOKgRY"))
+# print(get_youtube_title_by_url("https://youtu.be/DORZA_S7f9w"))
