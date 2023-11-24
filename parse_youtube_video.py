@@ -15,8 +15,13 @@ from selenium.webdriver.common.keys import Keys
 
 
 # support global values
-csv_structure = (",path_to_video,path_to_folder_with_images,"
-                 "youtube_video_id,url,title,description,path_to_caption,caption_in_frame\n")
+csv_structure_os_main_dataset = (",path_to_video,path_to_folder_with_images,youtube_video_id,url,title,"
+                 "description,path_to_caption,path_screen_caption_table,caption_in_frame_json\n")
+csv_structure_of_caption_table = "path_to_video,path_to_screen,caption\n"
+
+caption_sufix = "CAPTION_"
+screen_caption_table_sufix = "SCREEN_CAPTION_TABLE_"
+prefix_to_main_dataset = "DATASET_"
 
 
 # FIXME check if exist subtitle and lang
@@ -214,8 +219,9 @@ def get_images_from_url(url, folder=None, delay=1, name="file", max_images=20,
 # TODO implement this function of analyse video to csv string
 # TODO skip age restricted
 # FIXME check is None
-def get_analyse_video(url: str, folder=None,
-                      name_of_images='file', max_images:int = 100, delay: int = 1):
+def get_analyse_video(url: str, folder=None, save_caption=True, save_screen_caption_table=True,
+                      save_json_caption_in_time=True, name_of_images='file', max_images:int = 100,
+                      delay: int = 1):
     if url is None:
         return None
 
@@ -231,13 +237,30 @@ def get_analyse_video(url: str, folder=None,
     title = delete_file_extension(path_to_video[::-1].split('/', 1)[0][::-1])
     description = get_description(url)
 
-    # TODO save caption as file ?
-    path_to_caption = os.path.join(folder, "CAPTION_" + title + ".txt")
+    # save caption as file
+    if save_caption:
+        path_to_caption = os.path.join(folder, caption_sufix + title + ".txt")
 
-    with open(path_to_caption, 'w') as file:
-        #          list to str separate of ' '
-        file.write(' '.join(str(line) for line in get_subtitle(get_youtube_id_by_url(url))))
-        file.close()
+        with open(path_to_caption, 'w') as file:
+            #          list to str separate of ' '
+            file.write(' '.join(str(line) for line in get_subtitle(get_youtube_id_by_url(url))))
+            file.close()
+    else:
+        path_to_caption = "None"
+
+    # save screen caption table
+    if save_screen_caption_table:
+        path_screen_caption_table = os.path.join(folder, screen_caption_table_sufix + title + ".csv")
+
+        with open(path_screen_caption_table, 'w') as file:
+            file.write(csv_structure_of_caption_table)
+
+            for key, value in caption_in_frame.items():
+                file.write(f"{path_to_video},{key},{value}\n")
+
+            file.close()
+    else:
+        path_screen_caption_table = "None"
 
     return result.join([
         path_to_video,
@@ -247,20 +270,19 @@ def get_analyse_video(url: str, folder=None,
         title,
         description,
         path_to_caption,
-        json.dumps(caption_in_frame)
+        path_screen_caption_table,
+        json.dumps(caption_in_frame) if save_json_caption_in_time else "None"
     ]) + "\n"
 
 
-def get_dataset_by_request(requests: list, count: int = 10,
-                           name_of_dataset="DATASET.csv", folder=None, max_images=100, delay=1):
-    prefix_to_path = "DATASET_"
-
+def get_dataset_by_request(requests: list, count: int = 10, name_of_dataset="DATASET.csv",
+                           folder=None, max_images=100, delay=1):
     for request in requests:
         urls = get_url.get_urls_of_youtube_request([request], count=count, debug=True)
         file = os.path.join(name_of_dataset)
 
         if not folder:
-            folder = os.path.join(prefix_to_path + request)
+            folder = os.path.join(prefix_to_main_dataset + request)
 
         try:
             if not os.path.exists(os.path.join(os.getcwd(), folder)):
@@ -268,7 +290,7 @@ def get_dataset_by_request(requests: list, count: int = 10,
 
             if not os.path.exists(os.path.join(os.getcwd(), folder, name_of_dataset)):
                 file = open(os.path.join(folder, name_of_dataset), 'a+')
-                file.write(csv_structure)
+                file.write(csv_structure_os_main_dataset)
             else:
                 file = open(os.path.join(folder, name_of_dataset), 'a+')
         except Exception as e:
@@ -285,7 +307,6 @@ def get_dataset_by_request(requests: list, count: int = 10,
                     file.write(analyse_result)
                 else:
                     print("Warning: skip, because is url None!")
-
 
     return True
 
