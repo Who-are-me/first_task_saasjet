@@ -15,12 +15,12 @@ from selenium.webdriver.common.keys import Keys
 
 
 # support global values
-csv_structure_os_main_dataset = (",path_to_video,path_to_folder_with_images,youtube_video_id,url,title,"
+csv_structure_of_main_dataset = ("item,path_to_video,path_to_folder_with_images,youtube_video_id,url,title,"
                  "description,path_to_caption,path_screen_caption_table,caption_in_frame_json\n")
 csv_structure_of_caption_table = "path_to_video,path_to_screen,caption\n"
 
-caption_sufix = "CAPTION_"
-screen_caption_table_sufix = "SCREEN_CAPTION_TABLE_"
+prefix_caption = "CAPTION_"
+prefix_screen_caption_table = "SCREEN_CAPTION_TABLE_"
 prefix_to_main_dataset = "DATASET_"
 
 
@@ -120,8 +120,6 @@ def download_video_by_url(url, path=None, max_duration=10):
 
 
 def max_label(folder):
-    path_pattern = os.path.join(folder, "*.jpg")
-    existing_files = glob.glob(path_pattern)
     biggest_label = 0
 
     while True:
@@ -182,9 +180,7 @@ def get_images_from_video(video, folder_of_images=None, folder=None, delay=30,
 
 
 def get_images_from_url(url, folder=None, delay=1, name="file", max_images=20,
-                        caption_language="en", silent=False):
-    captions = None
-
+                        caption_language="en", silent=True):
     if url is None:
         print("ERROR: url is None, skip parse")
         return None
@@ -219,7 +215,7 @@ def get_images_from_url(url, folder=None, delay=1, name="file", max_images=20,
 # TODO implement this function of analyse video to csv string
 # TODO skip age restricted
 # FIXME check is None
-def get_analyse_video(url: str, folder=None, save_caption=True, save_screen_caption_table=True,
+def get_analyse_video(url: str, item:int = 1, folder=None, save_caption=True, save_screen_caption_table=True,
                       save_json_caption_in_time=True, name_of_images='file', max_images:int = 100,
                       delay: int = 1):
     if url is None:
@@ -232,14 +228,14 @@ def get_analyse_video(url: str, folder=None, save_caption=True, save_screen_capt
         max_images=max_images,
         folder=folder,
         delay=delay,
-        silent=False)
+        silent=True)
     youtube_video_id = get_youtube_id_by_url(url)
     title = delete_file_extension(path_to_video[::-1].split('/', 1)[0][::-1])
     description = get_description(url)
 
     # save caption as file
     if save_caption:
-        path_to_caption = os.path.join(folder, caption_sufix + title + ".txt")
+        path_to_caption = os.path.join(folder, prefix_caption + title + ".txt")
 
         with open(path_to_caption, 'w') as file:
             #          list to str separate of ' '
@@ -250,7 +246,7 @@ def get_analyse_video(url: str, folder=None, save_caption=True, save_screen_capt
 
     # save screen caption table
     if save_screen_caption_table:
-        path_screen_caption_table = os.path.join(folder, screen_caption_table_sufix + title + ".csv")
+        path_screen_caption_table = os.path.join(folder, prefix_screen_caption_table + title + ".csv")
 
         with open(path_screen_caption_table, 'w') as file:
             file.write(csv_structure_of_caption_table)
@@ -263,6 +259,7 @@ def get_analyse_video(url: str, folder=None, save_caption=True, save_screen_capt
         path_screen_caption_table = "None"
 
     return result.join([
+        item,
         path_to_video,
         path_to_folder_with_image,
         youtube_video_id,
@@ -278,7 +275,7 @@ def get_analyse_video(url: str, folder=None, save_caption=True, save_screen_capt
 def get_dataset_by_request(requests: list, count: int = 10, name_of_dataset="DATASET.csv",
                            folder=None, max_images=100, delay=1):
     for request in requests:
-        urls = get_url.get_urls_of_youtube_request([request], count=count, debug=True)
+        urls = get_url.get_urls_of_youtube_request([request], count=count, silent=True)
         file = os.path.join(name_of_dataset)
 
         if not folder:
@@ -290,21 +287,23 @@ def get_dataset_by_request(requests: list, count: int = 10, name_of_dataset="DAT
 
             if not os.path.exists(os.path.join(os.getcwd(), folder, name_of_dataset)):
                 file = open(os.path.join(folder, name_of_dataset), 'a+')
-                file.write(csv_structure_os_main_dataset)
+                file.write(csv_structure_of_main_dataset)
             else:
                 file = open(os.path.join(folder, name_of_dataset), 'a+')
         except Exception as e:
             print(f"Catch exception {e}")
         finally:
+            item = 1
             for url in urls:
-                print("URL -> " + str(url))
                 if url is not None:
                     analyse_result = get_analyse_video(
+                        item=item,
                         url=url,
                         folder=os.path.join(os.getcwd(), folder),
                         max_images=max_images,
                         delay=delay)
                     file.write(analyse_result)
+                    item += 1
                 else:
                     print("Warning: skip, because is url None!")
 

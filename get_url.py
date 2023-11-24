@@ -23,13 +23,13 @@ test_url_youtube_search_div = 'div#contents ytd-item-section-renderer>div#conten
 # TODO skip lives, ad
 # TODO add time limit
 '''WARNING one request -> list, multi request -> map'''
-def get_urls_of_youtube_request(list_of_search_requests = test_url_search_requests,
+def get_urls_of_youtube_request(list_of_search_requests: list = test_url_search_requests,
                                 filter_pattern = test_url_youtube_search_div,
-                                count: int = 10, debug=False):
+                                count: int = 10, silent=False):
     result = {}
 
     for request in list_of_search_requests:
-        if debug:
+        if silent:
             print("----DEBUG----")
 
         links = []
@@ -42,12 +42,12 @@ def get_urls_of_youtube_request(list_of_search_requests = test_url_search_reques
             # FIXME optimization
             link_webelements = driver.find_elements(By.CSS_SELECTOR, filter_pattern)
 
-        if debug:
+        if silent:
             print(link_webelements)
             print(f"Count link_webelements {len(link_webelements)}")
 
         for x in range(len(link_webelements)):
-            if debug:
+            if silent:
                 print(x, end=" ")
                 print(link_webelements[x].get_attribute('href'))
 
@@ -62,7 +62,7 @@ def get_urls_of_youtube_request(list_of_search_requests = test_url_search_reques
 
         result[request] = links
 
-    if debug:
+    if silent:
         print(result)
 
     return result
