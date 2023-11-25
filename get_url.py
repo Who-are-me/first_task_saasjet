@@ -21,7 +21,7 @@ test_url_youtube_search_div = 'div#contents ytd-item-section-renderer>div#conten
 
 
 # TODO filter shorts on/off
-# TODO skip lives, ad
+# TODO skip lives and age restricted
 # TODO add time limit
 '''WARNING one request -> list, multi request -> map'''
 def get_urls_of_youtube_request(list_of_search_requests: list = test_url_search_requests,
@@ -31,8 +31,7 @@ def get_urls_of_youtube_request(list_of_search_requests: list = test_url_search_
 
     for request in list_of_search_requests:
         if debug:
-            print("----DEBUG----")
-            print("----get_urls_of_youtube_request()----")
+            print(f"----get_urls_of_youtube_request()----")
 
         links = list()
         driver.get(f'https://www.youtube.com/results?search_query={request}')
@@ -51,6 +50,7 @@ def get_urls_of_youtube_request(list_of_search_requests: list = test_url_search_
 
         while it_webelements < count:
             if debug:
+                print('----WebElements----')
                 print(it_webelements, ": ", link_webelements[it_webelements].get_attribute('href'))
 
             element = link_webelements[it_webelements - 1].get_attribute('href')
@@ -153,6 +153,6 @@ def test_get_urls_of_youtube_request(requests: list, count):
         else:
             print("ERROR", file=sys.stderr)
 
-test_get_urls_of_youtube_request(['cats'], count=5)
+# test_get_urls_of_youtube_request(['cats'], count=5)
 # test_get_urls_of_youtube_request(['cats'], count=45)
 # test_get_urls_of_youtube_request(['cats'], count=550)

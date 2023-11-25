@@ -1,8 +1,8 @@
+import sys
+
 import get_url
 import cv2
 import os
-import glob
-import time
 import json
 
 
@@ -11,7 +11,6 @@ from pytube import YouTube
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 
 
 # support global values
@@ -47,31 +46,23 @@ def delete_file_extension(file):
     return file.split('.', 1)[0]
 
 
-# FIXME dont work
 def get_youtube_title_by_url(url: str):
     if url is None:
         return None
 
-    driver = webdriver.Chrome()
-    driver.get("https://www.youtube.com/")
-
-    time.sleep(2)
-
-    search_box = driver.find_element("name", "search_query")
-    # search_box.send_keys(url + Keys.RETURN)
-    search_box.send_keys(url)
-    search_box.send_keys(Keys.RETURN)
-
-    time.sleep(2)
-
-    video_link = driver.find_element(By.CSS_SELECTOR, "#video-title")
-
-    title = video_link.get_attribute("title")
+    tmp_driver = webdriver.Chrome()
+    tmp_driver.implicitly_wait(7)
+    tmp_driver.get(url)
+    title = tmp_driver.find_element(By.XPATH, '//*[@id="title"]/h1/yt-formatted-string').text
+    tmp_driver.close()
 
     return title
 
 
 def get_subtitle_in_time(subtitle: list, time: int):
+    if subtitle is None:
+        return None
+
     if len(subtitle) <= 0:
         return None
 
@@ -119,6 +110,7 @@ def download_video_by_url(url, path=None, max_duration=10):
     return file_name
 
 
+# TODO test me
 def max_label(folder):
     biggest_label = 0
 
@@ -132,14 +124,15 @@ def max_label(folder):
 
 
 def get_images_from_video(video, folder_of_images=None, folder=None, delay=30,
-                          name="file", max_images=20, silent=False, captions=None):
+                          name="file", max_images=20, debug=False, captions=None):
     screenshot = cv2.VideoCapture(video)
     count = 0
     num_images = 0
     caption_in_frame = dict()
 
-    if not silent:
-        print(f"Video {video}")
+    if debug:
+        print(f"----get_image_from_video({video}, {folder_of_images}, {folder}, {delay}, "
+              f"{name}, {max_images}, {debug}, {captions})----")
 
     if not os.path.exists(folder):
         os.makedirs(folder)
@@ -156,7 +149,6 @@ def get_images_from_video(video, folder_of_images=None, folder=None, delay=30,
         num_images += 1
         label += 1
         file_name = str(label) + '_' + name + ".jpg"
-        caption_in_frame[file_name] = get_subtitle_in_time(captions, delay * num_images - delay)
 
         if folder_of_images is not None:
             path = os.path.join(os.path.join(folder, folder_of_images), file_name)
@@ -165,13 +157,15 @@ def get_images_from_video(video, folder_of_images=None, folder=None, delay=30,
 
         try:
             cv2.imwrite(path, image)
+
             if cv2.imread(path) is None:
                 os.remove(path)
             else:
-                if not silent:
+                if debug:
                     print(f'Image successfully written at {path}')
+                caption_in_frame[file_name] = get_subtitle_in_time(captions, delay * num_images - delay)
         except Exception as e:
-            print(f"Image is NOT written at {path}, or Exception {e}")
+            print(f"Image is NOT written at {path}. \nOr End of video Exception {e}")
 
         count += delay * fps
         screenshot.set(1, count)
@@ -180,14 +174,14 @@ def get_images_from_video(video, folder_of_images=None, folder=None, delay=30,
 
 
 def get_images_from_url(url, folder=None, delay=1, name="file", max_images=20,
-                        caption_language="en", silent=True):
+                        caption_language="en", debug=False):
     if url is None:
-        print("ERROR: url is None, skip parse")
+        print("ERROR: url is None, skip parse", sys.stderr)
         return None
 
-    if not silent:
-        print(f"Url {url}")
-        print(f"Start of get image from video")
+    if debug:
+        print(f"----get_images_from_url({url}, {folder}, {delay}, {name}, "
+              f"{max_images}, {caption_language}, {debug})----")
 
     path_to_video = download_video_by_url(url, path=folder)
     path_to_folder_with_images = os.path.join(
@@ -197,16 +191,13 @@ def get_images_from_url(url, folder=None, delay=1, name="file", max_images=20,
     )
 
     dont_used, caption_in_frame = get_images_from_video(path_to_video,
-                          folder_of_images=path_to_folder_with_images,
-                          folder=folder,
-                          delay=delay,
-                          name=name,
-                          max_images=max_images,
-                          silent=silent,
-                          captions=get_subtitle(get_youtube_id_by_url(url), lang=caption_language))
-
-    if not silent:
-        print(f"End of get image from url {url}")
+                                                        folder_of_images=path_to_folder_with_images,
+                                                        folder=folder,
+                                                        delay=delay,
+                                                        name=name,
+                                                        max_images=max_images,
+                                                        debug=debug,
+                                                        captions=get_subtitle(get_youtube_id_by_url(url), lang=caption_language))
 
     return path_to_video, path_to_folder_with_images, caption_in_frame
 
@@ -221,14 +212,13 @@ def get_analyse_video(url: str, item:int = 1, folder=None, save_caption=True, sa
     if url is None:
         return None
 
-    result = ','
     path_to_video, path_to_folder_with_image, caption_in_frame = get_images_from_url(
         url=url,
         name=name_of_images,
         max_images=max_images,
         folder=folder,
         delay=delay,
-        silent=True)
+        debug=True)
     youtube_video_id = get_youtube_id_by_url(url)
     title = delete_file_extension(path_to_video[::-1].split('/', 1)[0][::-1])
     description = get_description(url)
@@ -252,14 +242,14 @@ def get_analyse_video(url: str, item:int = 1, folder=None, save_caption=True, sa
             file.write(csv_structure_of_caption_table)
 
             for key, value in caption_in_frame.items():
-                file.write(f"{path_to_video},{key},{value}\n")
+                file.write(f"{path_to_video},{path_to_folder_with_image}/{key},{value}\n")
 
             file.close()
     else:
         path_screen_caption_table = "None"
 
-    return result.join([
-        item,
+    return ','.join([
+        str(item),
         path_to_video,
         path_to_folder_with_image,
         youtube_video_id,
@@ -285,11 +275,11 @@ def get_dataset_by_request(requests: list, count: int = 10, name_of_dataset="DAT
             if not os.path.exists(os.path.join(os.getcwd(), folder)):
                 os.makedirs(os.path.join(os.getcwd(), folder))
 
-            file = open(os.path.join(folder, name_of_dataset), 'a+')
-
             if not os.path.exists(os.path.join(os.getcwd(), folder, name_of_dataset)):
+                file = open(os.path.join(folder, name_of_dataset), 'a+')
                 file.write(csv_structure_of_main_dataset)
-
+            else:
+                file = open(os.path.join(folder, name_of_dataset), 'a+')
         except Exception as e:
             print(f"Catch exception {e}")
         finally:
@@ -306,7 +296,7 @@ def get_dataset_by_request(requests: list, count: int = 10, name_of_dataset="DAT
                     file.write(analyse_result)
                     item += 1
                 else:
-                    print("Warning: skip, because is url None!")
+                    print("WARNING: skip, because is url None!", sys.stderr)
 
     return True
 
@@ -329,3 +319,10 @@ def get_dataset_by_request(requests: list, count: int = 10, name_of_dataset="DAT
 # print(get_youtube_title_by_url("https://www.youtube.com/watch?v=DORZA_S7f9w"))
 # print(get_youtube_title_by_url("https://youtu.be/b6wAYwOKgRY"))
 # print(get_youtube_title_by_url("https://youtu.be/DORZA_S7f9w"))
+# print(max_label(os.path.join(os.getcwd(), 'DATASET_israil shorts', 'IMAGES_Video of Israel’s Iron Dome missile malfunctioning  AJ shorts')))
+# get_images_from_video(os.path.join(os.getcwd(), 'DATASET_israil shorts', 'Video of Israel’s Iron Dome missile malfunctioning  AJ shorts.mp4'),
+#                       folder_of_images=os.path.join(os.getcwd(), 'DATASET_israil shorts', 'IMAGES_Video of Israel’s Iron Dome missile malfunctioning  AJ shorts'),
+#                       folder=os.path.join(os.getcwd(), 'DATASET_israil shorts'),
+#                       debug=True,
+#                       delay=1
+#                       )
