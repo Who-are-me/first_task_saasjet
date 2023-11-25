@@ -1,4 +1,6 @@
 import time
+import sys
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -18,21 +20,21 @@ test_url_search_requests = [
 test_url_youtube_search_div = 'div#contents ytd-item-section-renderer>div#contents a#thumbnail'
 
 
-# TODO skip None urls
 # TODO filter shorts on/off
 # TODO skip lives, ad
 # TODO add time limit
 '''WARNING one request -> list, multi request -> map'''
 def get_urls_of_youtube_request(list_of_search_requests: list = test_url_search_requests,
                                 filter_pattern = test_url_youtube_search_div,
-                                count: int = 10, silent=False):
+                                count: int = 10, debug=False):
     result = {}
 
     for request in list_of_search_requests:
-        if silent:
+        if debug:
             print("----DEBUG----")
+            print("----get_urls_of_youtube_request()----")
 
-        links = []
+        links = list()
         driver.get(f'https://www.youtube.com/results?search_query={request}')
         link_webelements = driver.find_elements(By.CSS_SELECTOR, filter_pattern)
 
@@ -42,27 +44,31 @@ def get_urls_of_youtube_request(list_of_search_requests: list = test_url_search_
             # FIXME optimization
             link_webelements = driver.find_elements(By.CSS_SELECTOR, filter_pattern)
 
-        if silent:
-            print(link_webelements)
+        if debug:
             print(f"Count link_webelements {len(link_webelements)}")
 
-        for x in range(len(link_webelements)):
-            if silent:
-                print(x, end=" ")
-                print(link_webelements[x].get_attribute('href'))
+        it_webelements = 0
 
-            links += [link_webelements[x-1].get_attribute('href')]
+        while it_webelements < count:
+            if debug:
+                print(it_webelements, ": ", link_webelements[it_webelements].get_attribute('href'))
 
-            if x == count-1:
-                break
+            element = link_webelements[it_webelements - 1].get_attribute('href')
 
+            if element is not None:
+                links += [element]
+            else:
+                count += 1
 
+            it_webelements += 1
+
+        # TODO test me
         if len(list_of_search_requests) == 1:
             return links
 
         result[request] = links
 
-    if silent:
+    if debug:
         print(result)
 
     return result
@@ -132,7 +138,21 @@ def get_urls_of_youtube_channel(channel_id = "wendoverproductions", show_title=F
 # some code for testing file
 ############################
 
-# print(get_urls_of_youtube_request(["cats"]))
-# print(get_urls_of_youtube_channel("@AlekOS"))
+# simple test
+def test_get_urls_of_youtube_request(requests: list, count):
+    lu = list()
 
+    for request in requests:
+        tmp = get_urls_of_youtube_request([request], count=count, debug=True)
+        # print(tmp)
+        lu.append(len(tmp))
 
+    for it in range(len(requests)):
+        if lu[it] == count:
+            print("pass")
+        else:
+            print("ERROR", file=sys.stderr)
+
+test_get_urls_of_youtube_request(['cats'], count=5)
+# test_get_urls_of_youtube_request(['cats'], count=45)
+# test_get_urls_of_youtube_request(['cats'], count=550)

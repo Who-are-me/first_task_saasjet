@@ -275,7 +275,7 @@ def get_analyse_video(url: str, item:int = 1, folder=None, save_caption=True, sa
 def get_dataset_by_request(requests: list, count: int = 10, name_of_dataset="DATASET.csv",
                            folder=None, max_images=100, delay=1):
     for request in requests:
-        urls = get_url.get_urls_of_youtube_request([request], count=count, silent=True)
+        urls = get_url.get_urls_of_youtube_request([request], count=count, debug=True)
         file = os.path.join(name_of_dataset)
 
         if not folder:
@@ -285,15 +285,16 @@ def get_dataset_by_request(requests: list, count: int = 10, name_of_dataset="DAT
             if not os.path.exists(os.path.join(os.getcwd(), folder)):
                 os.makedirs(os.path.join(os.getcwd(), folder))
 
+            file = open(os.path.join(folder, name_of_dataset), 'a+')
+
             if not os.path.exists(os.path.join(os.getcwd(), folder, name_of_dataset)):
-                file = open(os.path.join(folder, name_of_dataset), 'a+')
                 file.write(csv_structure_of_main_dataset)
-            else:
-                file = open(os.path.join(folder, name_of_dataset), 'a+')
+
         except Exception as e:
             print(f"Catch exception {e}")
         finally:
             item = 1
+
             for url in urls:
                 if url is not None:
                     analyse_result = get_analyse_video(
