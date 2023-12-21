@@ -4,6 +4,8 @@ import get_url
 import cv2
 import os
 import json
+import requests
+import re
 
 
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -14,8 +16,10 @@ from selenium.webdriver.common.by import By
 
 
 # support global values
-csv_structure_of_main_dataset = ("item,path_to_video,path_to_folder_with_images,youtube_video_id,url,title,"
-                 "description,path_to_caption,path_screen_caption_table,caption_in_frame_json\n")
+csv_structure_of_main_dataset = ("item,path_to_video,path_to_folder_with_images,youtube_video_id,url,"
+                                 "title,views,create_date,description,likes,dislikes,rating,deleted,tags,"
+                                 "channel_name,channel_id,path_to_caption,path_screen_caption_table,"
+                                 "caption_in_frame_json,fps,duration\n")
 csv_structure_of_caption_table = "path_to_video,path_to_screen,caption\n"
 
 prefix_caption = "CAPTION_"
@@ -46,17 +50,35 @@ def delete_file_extension(file):
     return file.split('.', 1)[0]
 
 
-def get_youtube_title_by_url(url: str):
+def get_youtube_data_by_url(url: str):
     if url is None:
         return None
 
     tmp_driver = webdriver.Chrome()
-    tmp_driver.implicitly_wait(7)
+    tmp_driver.implicitly_wait(10)
     tmp_driver.get(url)
     title = tmp_driver.find_element(By.XPATH, '//*[@id="title"]/h1/yt-formatted-string').text
+    # click on expand description
+    tmp_driver.find_element(By.XPATH, '//*[@id="expand"]').click()
+
+    description = tmp_driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-watch-flexy/div[5]/div[1]/div/div[2]/ytd-watch-metadata/div/div[4]/div[1]/div/ytd-text-inline-expander/yt-attributed-string').text
+    channel_name = tmp_driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-watch-flexy/div[5]/div[1]/div/div[2]/ytd-watch-metadata/div/div[2]/div[1]/ytd-video-owner-renderer/div[1]/ytd-channel-name/div/div/yt-formatted-string/a').text
+    channel_id = tmp_driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-watch-flexy/div[5]/div[1]/div/div[2]/ytd-watch-metadata/div/div[2]/div[1]/ytd-video-owner-renderer/div[1]/ytd-channel-name/div/div/yt-formatted-string/a').get_attribute('href')
+    request_likes = requests.get(f'https://returnyoutubedislikeapi.com/votes?videoId={get_youtube_id_by_url(url)}').json()
+
+    views = request_likes['viewCount']
+    create_date = request_likes['dateCreated']
+    likes = request_likes['likes']
+    dislikes = request_likes['dislikes']
+    rating = request_likes['rating']
+    deleted = request_likes['deleted']
+
+    # FIXME => don't correct work '#jujutsukaisen#bocchitherock'
+    tags = re.findall(r'\b#\w+', description)
+
     tmp_driver.close()
 
-    return title
+    return title, views, create_date, description, likes, dislikes, rating, deleted, tags, channel_name, channel_id
 
 
 def get_subtitle_in_time(subtitle: list, time: int):
@@ -69,16 +91,11 @@ def get_subtitle_in_time(subtitle: list, time: int):
     result = ""
 
     for it in range(len(subtitle)):
-        if subtitle[it].get('start') < time and subtitle[it].get('start') + subtitle[it].get('duration') > time:
+        if (subtitle[it].get('start') < time) and (subtitle[it].get('start') + subtitle[it].get('duration') > time):
             result = subtitle[it].get('text')
             break
 
     return result
-
-
-# TODO implement me! get descriptions
-def get_description(url: str):
-    return "Template description"
 
 
 def get_youtube_id_by_url(string: str):
@@ -126,6 +143,8 @@ def max_label(folder):
 def get_images_from_video(video, folder_of_images=None, folder=None, delay=30,
                           name="file", max_images=20, debug=False, captions=None):
     screenshot = cv2.VideoCapture(video)
+    fps = screenshot.get(cv2.CAP_PROP_FPS)
+    duration = int(screenshot.get(cv2.CAP_PROP_FRAME_COUNT)) / fps
     count = 0
     num_images = 0
     caption_in_frame = dict()
@@ -170,7 +189,7 @@ def get_images_from_video(video, folder_of_images=None, folder=None, delay=30,
         count += delay * fps
         screenshot.set(1, count)
 
-    return screenshot.getBackendName(), caption_in_frame
+    return screenshot.getBackendName(), caption_in_frame, fps, duration
 
 
 def get_images_from_url(url, folder=None, delay=1, name="file", max_images=20,
@@ -190,7 +209,7 @@ def get_images_from_url(url, folder=None, delay=1, name="file", max_images=20,
         "IMAGES_" + delete_file_extension(path_to_video[::-1].split('/', 1)[0][::-1])
     )
 
-    dont_used, caption_in_frame = get_images_from_video(path_to_video,
+    dont_used, caption_in_frame, fps, duration = get_images_from_video(path_to_video,
                                                         folder_of_images=path_to_folder_with_images,
                                                         folder=folder,
                                                         delay=delay,
@@ -199,7 +218,7 @@ def get_images_from_url(url, folder=None, delay=1, name="file", max_images=20,
                                                         debug=debug,
                                                         captions=get_subtitle(get_youtube_id_by_url(url), lang=caption_language))
 
-    return path_to_video, path_to_folder_with_images, caption_in_frame
+    return path_to_video, path_to_folder_with_images, caption_in_frame, fps, duration
 
 
 
@@ -212,7 +231,9 @@ def get_analyse_video(url: str, item:int = 1, folder=None, save_caption=True, sa
     if url is None:
         return None
 
-    path_to_video, path_to_folder_with_image, caption_in_frame = get_images_from_url(
+    title, views, create_date, description, likes, dislikes, rating, deleted, tags, channel_name, channel_id = get_youtube_data_by_url(url)
+
+    path_to_video, path_to_folder_with_image, caption_in_frame, fps, duration = get_images_from_url(
         url=url,
         name=name_of_images,
         max_images=max_images,
@@ -220,8 +241,6 @@ def get_analyse_video(url: str, item:int = 1, folder=None, save_caption=True, sa
         delay=delay,
         debug=True)
     youtube_video_id = get_youtube_id_by_url(url)
-    title = delete_file_extension(path_to_video[::-1].split('/', 1)[0][::-1])
-    description = get_description(url)
 
     # save caption as file
     if save_caption:
@@ -248,6 +267,7 @@ def get_analyse_video(url: str, item:int = 1, folder=None, save_caption=True, sa
     else:
         path_screen_caption_table = "None"
 
+
     return ','.join([
         str(item),
         path_to_video,
@@ -255,16 +275,28 @@ def get_analyse_video(url: str, item:int = 1, folder=None, save_caption=True, sa
         youtube_video_id,
         url,
         title,
+        views,
+        create_date,
         description,
+        likes,
+        dislikes,
+        rating,
+        deleted,
+        tags,
+        channel_name,
+        channel_id,
         path_to_caption,
         path_screen_caption_table,
-        json.dumps(caption_in_frame) if save_json_caption_in_time else "None"
+        json.dumps(caption_in_frame) if save_json_caption_in_time else "None",
+        fps,
+        duration
     ]) + "\n"
 
 
-def get_dataset_by_request(requests: list, count: int = 10, name_of_dataset="DATASET.csv",
-                           folder=None, max_images=100, delay=1):
-    for request in requests:
+def get_dataset_by_request(request_list: list, count: int = 10, name_of_dataset="DATASET.csv",
+                           folder=None, max_images=100, delay=1, save_caption=True,
+                           save_screen_caption_table=True, save_json_caption_in_time=True):
+    for request in request_list:
         urls = get_url.get_urls_of_youtube_request([request], count=count, debug=True)
         file = os.path.join(name_of_dataset)
 
@@ -292,7 +324,11 @@ def get_dataset_by_request(requests: list, count: int = 10, name_of_dataset="DAT
                         url=url,
                         folder=os.path.join(os.getcwd(), folder),
                         max_images=max_images,
-                        delay=delay)
+                        delay=delay,
+                        save_caption=save_caption,
+                        save_screen_caption_table=save_screen_caption_table,
+                        save_json_caption_in_time=save_json_caption_in_time,
+                    )
                     file.write(analyse_result)
                     item += 1
                 else:
@@ -312,7 +348,7 @@ def get_dataset_by_request(requests: list, count: int = 10, name_of_dataset="DAT
 # print(type(st[1]))
 # print(st[0:3])
 # print(type(st))
-# test one creenshot by one fps
+# test one screenshot by one fps
 # print(get_url.get_urls_of_youtube_channel("@uahuy"))
 # extract_images_from_word("@uahuy", do_download=False)
 # print(YouTubeTranscriptApi.get_transcript("TrKMA7SYXfg", languages=['ru']))
@@ -326,3 +362,4 @@ def get_dataset_by_request(requests: list, count: int = 10, name_of_dataset="DAT
 #                       debug=True,
 #                       delay=1
 #                       )
+# get_youtube_data_by_url('https://www.youtube.com/watch?v=UVjzNRwo9Qc')
