@@ -55,10 +55,15 @@ def get_urls_of_youtube_request(list_of_search_requests: list = test_url_search_
 
             element = link_webelements[it_webelements - 1].get_attribute('href')
 
-            if element is not None:
-                links += [element]
-            else:
+            # TODO test filter shorts
+            if str(element).startswith('https://www.youtube.com/shorts'):
                 count += 1
+            else:
+                # check is none
+                if element is not None:
+                    links += [element]
+                else:
+                    count += 1
 
             it_webelements += 1
 

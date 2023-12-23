@@ -11,7 +11,7 @@ import parse_youtube_video as pv
 if __name__ == '__main__':
     print(
         pv.get_dataset_by_request(
-            request_list=['cats shorts'],
+            request_list=['funny cats short video'],
             count=2,
             delay=1,
             max_images=100,
