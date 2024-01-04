@@ -1,6 +1,8 @@
 import get_url
 import parse_youtube_video as pv
 
+# FIXME of project
+# 1 wrap comma in csv files
 # TODO of project
 # 1 add scrape items
 # 2 rewrite file structure

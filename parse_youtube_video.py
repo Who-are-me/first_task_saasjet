@@ -14,6 +14,8 @@ from pytube import YouTube
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 
 
 # support global values
@@ -27,8 +29,16 @@ prefix_caption = "CAPTION_"
 prefix_screen_caption_table = "SCREEN_CAPTION_TABLE_"
 prefix_to_main_dataset = "DATASET_"
 
+# chrome options
+# service = Service(executable_path=r'/usr/bin/google-chrome')
+chrome_options = Options()
+chrome_options.add_argument('--headless')
+chrome_options.add_argument('--no-sandbox')
+chrome_options.add_argument('--disable-dev-shm-usage')
 # temporal web driver
-tmp_driver = webdriver.Chrome()
+tmp_driver = webdriver.Chrome(
+    # service=service,
+    options=chrome_options)
 
 
 # FIXME check if exist subtitle and lang
@@ -207,7 +217,8 @@ def get_images_from_video(video, folder_of_images=None, folder=None, delay=30,
         count += delay * fps
         screenshot.set(1, count)
 
-    return screenshot.getBackendName(), caption_in_frame, fps, duration
+    # screenshot.getBackendName(),
+    return caption_in_frame, fps, duration
 
 
 def get_images_from_url(url, folder=None, delay=1, name="file", max_images=20,
@@ -226,8 +237,8 @@ def get_images_from_url(url, folder=None, delay=1, name="file", max_images=20,
         # gets title of video
         "IMAGES_" + delete_file_extension(path_to_video[::-1].split('/', 1)[0][::-1])
     )
-
-    dont_used, caption_in_frame, fps, duration = get_images_from_video(path_to_video,
+    # dont_used,
+    caption_in_frame, fps, duration = get_images_from_video(path_to_video,
                                                         folder_of_images=path_to_folder_with_images,
                                                         folder=folder,
                                                         delay=delay,
